@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -26,12 +29,23 @@ jobs:
 
       - name: Clone electron/asar and prepare
         run: |
-          git clone git@github.com:electron/asar.git
+          git clone https://github.com/electron/asar.git
           cd asar
           yarn install
+          pkg .
 
-      - name: Determine eleron/asar package version through package.json
-        id: asar-version
+      - name: Determine eleron/asar package version through git tags
+        id: version
         run: |
           cd asar
-          echo "::set-output name=version::$(node -p "require('./package.json').version")"
+          echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: ./asar/asar-*
+          name: ${{ steps.version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_REPOSITORY: async3619/asar-exec
